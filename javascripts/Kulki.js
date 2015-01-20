@@ -8,7 +8,7 @@
 	app.set(inverted);
 
 	//decide max number of rows/columns
-	var res = 10;
+	var res = 15;
 	var ballLevel = 9;
 	var ballCount = 0;
 	var points = 0;
@@ -211,7 +211,7 @@
 		var inclinedCount1 = 0;
 		var inclinedCount2 = 0;
 		
-		for(var i=0; i<res; i++){
+		for(var i=1; i<res; i++){
 			if(x+i<res && grid.cells[x+i][y].Ball == value)
 				horizontalCount++;
 			if(x-i>=0 && grid.cells[x-i][y].Ball == value)
@@ -232,18 +232,18 @@
 			if(y-i>=0 && x-i>=0 && grid.cells[x-i][y-i].Ball == value)
 				inclinedCount2++;
 		}
-		if(horizontalCount >= 5)
+		if(horizontalCount >= 4)
 			points += horizontalCount;
-		if(verticalCount >= 5)
+		if(verticalCount >= 4)
 			points += verticalCount;
-		if(inclinedCount1 >= 5)
+		if(inclinedCount1 >= 4)
 			points += inclinedCount1;
-		if(inclinedCount2 >= 5)
+		if(inclinedCount2 >= 4)
 			points += inclinedCount2;
 
 		console.log(points);
 			
-		if(horizontalCount >= 5){
+		if(horizontalCount >= 4){
 			for(var i=0; i<res; i++){
 				if(x+i<res && grid.cells[x+i][y].Ball == value){
 					grid.cells[x+i][y].Ball = 0;
@@ -257,7 +257,7 @@
 				}
 			}
 		}
-		if(verticalCount >= 5){
+		if(verticalCount >= 4){
 			for(var i=0; i<res; i++){
 				if(y+i<res && grid.cells[x][y+i].Ball == value){
 					grid.cells[x][y+i].Ball = 0;
@@ -271,7 +271,7 @@
 				}
 			}
 		}
-		if(inclinedCount1 >= 5){
+		if(inclinedCount1 >= 4){
 			for(var i=0; i<res; i++){
 				if(y+i<res && x-i>=0 && grid.cells[x-i][y+i].Ball == value){
 					grid.cells[x-i][y+i].Ball = 0;
@@ -285,7 +285,7 @@
 				}
 			}
 		}
-		if(inclinedCount2 >= 5){
+		if(inclinedCount2 >= 4){
 			for(var i=0; i<res; i++){
 				if(y+i<res && x+i<res && grid.cells[x+i][y+i].Ball == value){
 					grid.cells[x+i][y+i].Ball = 0;
