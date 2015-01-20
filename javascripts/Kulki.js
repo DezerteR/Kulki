@@ -1,260 +1,215 @@
-﻿
-var fps = 60;
+﻿main = function(app,s){
 
-setBackground = function(){
-	io.setBGColor('#0d0d0f');
-	var starImgs = [];
-	var starCount = 2;
-	var starDensity = io.canvas.width/30;
-	var baseVel = 5;
-	for(var i=0; i<starCount; i++)
-		starImgs[i] = new Image();
+	//set colors with random values
+	// var color = iio.randomColor();
+	var color = 'gray';
+	var inverted = iio.invertColor(color);
+	app.set(inverted);
+
+	//decide max number of rows/columns
+	var res = 10;
+	var ballLevel = 9;
+	var ballCount = 0;
+
+	//create the grid
+	var grid = app.add(app.center,
+		(( app.height < app.width ) ? app.height-50 : app.width-50)
+			+ ' outline 2 simple grid '+res+' '+color);
+	for(var x=0; x<grid.C; x++)
+		for(var y=0; y<grid.R; y++)
+			grid.cells[y][x].Ball = 0;
 		
 	
-	moveToTop = function(obj){
-		obj.setPos(iio.getRandomInt(10, io.canvas.width-10)
-									,iio.getRandomInt(-340, -100));
-		return true;
-	}
-	starImgs[0].src = imgPath+'StarSM1.png'
-	starImgs[1].src = imgPath+'StarSM2.png'
 	
-	for(var i=0; i<starCount; i++){
-	(function(n){
-		starImgs[n].onload = function(){
-			var zIndex, vel;
-			
-			switch(n){
-				case 0: zIndex = -20;vel = baseVel;break;
-				case 1: zIndex = -15;vel = baseVel*1.1;break;
-			}
-			
-			
-			for(var j=0; j<starDensity; j++){
-				io.addToGroup('stars', new iio.SimpleRect(iio.getRandomInt(10, io.canvas.width-10),iio.getRandomInt(0, io.canvas.height)), zIndex)
-					.createWithImage(starImgs[n])
-					.enableKinematics()
-					.setVel(0,vel*iio.getRandomNum(0.95, 1.05))
-					.setBound('bottom',io.canvas.height+140, moveToTop);
-					console.log('new Star '+n)
-			}
-		}
+	var neighbours = new Array(4);
+	neighbours[0] = {x:1,y:0};
+	neighbours[1] = {x:-1,y:0};
+	neighbours[2] = {x:0,y:1};
+	neighbours[3] = {x:0,y:-1};
+	// neighbours[4] = {x:1,y:1};
+	// neighbours[5] = {x:1,y:-1};
+	// neighbours[6] = {x:-1,y:1};
+	// neighbours[7] = {x:-1,y:-1};
+	
+	graph = new Array(res+2);
+	for (var i = 0; i < res+2; i++)
+		graph[i] = new Array(res+2);
+	
+
+	for (var i = 0; i < res+2; i++)
+	for (var j = 0; j < res+2; j++)
+		graph[i][j] = 1;
+	
+	for (var i = 0; i < res+2; i++){
+		graph[i][0] = -2;
+		graph[i][res+1] = -2;
+	}
+	for (var i = 0; i < res+2; i++){
+		graph[0][i] = -2;
+		graph[res+1][i] = -2;
+	}
 		
-		})(i)
-	}
 	
+	var Add = function(a,b){
+		return {x:a.x+b.x, y:a.y+b.y, z:0};
+	};
+	var Sub = function(a,b){
+		return {x:a.x-b.x, y:a.y-b.y, z:0};
+	};
+	SetObstacle = function(cell){
+		graph[cell.x+1][cell.y+1] = -2;
+	};
 	
-}
+	AStar = function(from, to){
+		
+		var visited = new Array(res+2);
+		for (var i = 0; i < res+2; i++)
+			visited[i] = new Array(res+2);
+		
 
-
-var loadImages = function(obj, callback){
-	var len = obj.length;
-	var loaded = 0;
-	// console.log(typeof callback);
-	for(var i=0; i<len; i++){
-		// console.log('loading '+obj[i].name);
-		obj[i].image = new Image();
-		obj[i].image.onload = function(){
-			if(++loaded >= len-1){
-				loaded=-2;
-				// alert('loaded');
-				callback();
-			}
-				
-		}
-		obj[i].image.src = imgPath+obj[i].name+'.png';
+		for (var i = 0; i < res+2; i++)
+		for (var j = 0; j < res+2; j++)
+			visited[i][j] = -1;
+		
+		var queue = new PriorityQueue({ comparator: function(a, b) { return a.z - b.z; }});
+		queue.queue(from);
+		
+		var g = function(cell){
+			return visited[cell.x+1][cell.y+1];
 		};
-}
-
-var MainGame = function(){
-
-	var rampage = 0;
-	io.addGroup('lasers');
-	io.addGroup('rockets');
-	io.addGroup('elasers');
-	io.addGroup('player');
-	io.addGroup('enemy');
-	io.addGroup('bonus');
-	io.addGroup('explosion');
-	setBackground();
-	player = io.addToGroup('player', new Player(io.canvas.center.x, io.canvas.height-100, 'Dez'));
-	player.switchWeapon(1);
-
- 	window.addEventListener('keydown', function(event){
-		player.updateInput(event, true);
-
-		// check for pause
-		if(iio.keyCodeIs('pause', event) || iio.keyCodeIs('p', event))
-					io.pauseFramerate();
-	});
-	window.addEventListener('keyup', function(event){
-		player.updateInput(event, false);
-	});
-	
-	// bonusText = null;
-	
-	io.setCollisionCallback('lasers', 'enemy', function(laser, enemy){
-		player.getPoints(14);
-		enemy.hp -= laser.dmg;
-		
-		io.addToGroup('flashes'
-		,new iio.SimpleRect((laser.pos.x+enemy.pos.x)/2
-							 ,(laser.pos.y+enemy.pos.y)/2),10)
-				.createWithImage(laserFlashImg)
-				.enableKinematics()
-				.setVel(enemy.vel.x, enemy.vel.y)
-				.shrink(.1);
-		
-		io.rmvFromGroup(laser, 'lasers');
-		if (enemy.hp < 0){
-			dropBonus(enemy.pos.x, enemy.pos.y);
-			spawnExplosion(enemy.pos.x, enemy.pos.y);
-			rampage+=5;
-			io.addToGroup('limitedLifetime', new iio.SimpleRect(enemy.pos))
-				.enableKinematics()
-				.setBound('bottom', io.canvas.height+120)
-				// .createWithImage(scrapImage)
-				.createWithAnim(scrapAnim.getSprite(0,5),'scrap',0)
-				.playAnim('scrap', 10, io)
-				.setLifetime(60/10*6)
-				.setVel(0, enemy.vel.y);
-			
-			io.rmvFromGroup(enemy, 'enemy');
+		var set_g = function(cell, x){
+			visited[cell.x+1][cell.y+1] = x;
+		};
+		var heur = function(c){
+			c = Sub(to, c);
+			return Math.sqrt(c.x*c.x+c.y*c.y);
 		}
-	});
-	io.setCollisionCallback('explosion', 'enemy', function(explosion, enemy){
-		player.getPoints(enemy.hp);
-		// enemy.hp -= explosion.dmg;
-		enemy.hp -= 66;
-		
-		if (enemy.hp < 0){
-			dropBonus(enemy.pos.x, enemy.pos.y);
-			spawnExplosion(enemy.pos.x, enemy.pos.y);
-			rampage+=5;
-			io.addToGroup('limitedLifetime', new iio.SimpleRect(enemy.pos))
-				.enableKinematics()
-				.setBound('bottom', io.canvas.height+120)
-				.createWithAnim(scrapAnim.getSprite(0,5),'scrap',0)
-				.playAnim('scrap', 10, io)
-				.setLifetime(60/10*6)
-				.setVel(0, enemy.vel.y);
-			
-			io.rmvFromGroup(enemy, 'enemy');
-		}
-	});
-	io.setCollisionCallback('player', 'enemy', function(player_, enemy){
-		enemy.hp -= 100;
-		player_.getHit(50);
-		// if (enemy.hp < 0){
-			spawnExplosion(enemy.pos.x, enemy.pos.y);
-			rampage+=5;
-			io.addToGroup('limitedLifetime', new iio.SimpleRect(enemy.pos))
-				.enableKinematics()
-				.setBound('bottom', io.canvas.height+120)
-				.createWithAnim(scrapAnim.getSprite(0,5),'scrap',0)
-				.playAnim('scrap', 10, io)
-				.setLifetime(60/10*6)
-				.setVel(0, enemy.vel.y);
-			io.rmvFromGroup(enemy, 'enemy');
-		// }
-		// if (player_.hp < 0){
-			// delete player.owner.handle;
-			// delete player.owner;
-				// io.rmvFromGroup(player, 'player');
-		// }
-	});
-	io.setCollisionCallback('player', 'bonus', function(player_, bonus){
-		bonuses[bonus.id].useBonus(player_);
-		statementQueue.push(bonuses[bonus.id].text);
-		io.rmvFromGroup(bonus, 'bonus');
-	});
-	io.setCollisionCallback('player', 'elasers', function(player_, elaser){
-			
-			player_.getHit(elaser.dmg);
-			io.rmvFromGroup(elaser, 'elasers');
-	});
-	
-	rampageText = io.addToGroup('GUI', new iio.Text('•Rampage•',io.canvas.width/2,15)
-						.setFont('18px Impact')
-						.setTextAlign('center')
-						.setFillStyle('white'));
-	var e1 = 0;
-	var e2 = 5;
-	var t1 = 0;
-	var release = 0;
-	
-	statementQueue.push('Protect');
-	statementQueue.push('Your');
-	statementQueue.push('Homeland');
-	statementQueue.push('Prepare');
-	statementQueue.push('Prepare');
-	statementQueue.push('ACHTUNG');
-	//-----------------
-	io.setFramerate(60, function(){
-		if(quit)
-			io.cancelFramerate();
-			
-		statement();
-		
-		if(rampage >= 100){
-			statementQueue.push('✠RAMPAGE✠');
-			rampageText.setText('Rampage');
-			rampage = 0;
-		}
-		else{
-			var tmp = Math.round(rampage/10);
-			var str = '';
-			for(var i=0; i<tmp; i++)
-				str += '•';
-			rampage = Math.max(0, rampage - 0.05);
-			rampageText.setText(str);
-		}
-		
-		t1++;
-		
-		if(t1 > release){
-			t1 = 0;
-			release = iio.getRandomInt(30,50);
-			var x = iio.getRandomInt(30,io.canvas.width-30);
-			var y = iio.getRandomInt(-50,-100);
-				var tmp_en = io.addToGroup('enemy', new Enemy(x,y,iio.getRandomInt(0,enemyStats.length)))
-			}
-	});
-
-}
-
-function main(IO){
-	io = IO;
-	// io.activateDebugger();
-	
-	var scrapImage = new Image();
-	var image90 = new Image();
-	laserFlashImg = new Image();
-	
-	scrapImage.onload = function(){
-		scrapAnim = new iio.SpriteMap(scrapImage,140,140);
-	
-		image90.onload = function(){
-		
-			explosionAnim = new iio.SpriteMap(image90,100,100);
-			laserFlashImg.onload = function(){
+		var resolvePatch = function(){
+			var path = new Array(0);
+			var s = to;
+			while(from.x!=to.x || from.y!=to.y){
+				var it;
+				var n;
+				var minval = 100000;
+				for(n of neighbours){
+					var u = Add(s,n);
+					var uval = g(u);
+					console.log(uval);
+					if(uval < minval && graph[u.x+1][u.y+1]!=-2 && uval>-1){
+						minval = uval;
+						it = u;
+						
+					}
+				}
+				if(it.x){
+					s = Add(s, it);
+					set_g(s, 10000);
+					path.push(s);
+				}
+				else 
+					break;
 				
 				
-				loadImages(enemyStats,
-					loadImages(enemyProjectiles,
-						loadImages(projectiles,
-						loadImages(rockets,
-							loadImages(bonuses, function(){MainGame()})))));
 			}
-			laserFlashImg.src = imgPath+'laserRedShot.png';
+			return path;
 		}
-		image90.src = imgPath+'explosion.png';
+		
+		set_g(from, 0);
+		
+		var terminate = false;
+		var found = false;
+		var last = from;
+		var count = 0;
+		var mindist = 1000;
+		while(!terminate && queue.length > 0 && count++<1000 ){
+			
+			var top = queue.dequeue();
+			
+			var n;
+			var topVal = g(top);
+			for(n of neighbours){
+				var u = Add(n,top);
+				var uval = g(u);
+				if(graph[u.x+1][u.y+1] != -2 && uval==-1 && uval<mindist){ //  non collide, non visited
+					set_g(u, topVal+1);
+					queue.queue({x:u.x, y:u.y, z:topVal+1+heur(u)});
+				}  
+				else if(graph[u.x+1][u.y+1] != -2 && uval>-1 && uval>topVal+1){
+					set_g(u, topVal+1);
+					queue.queue({x:u.x, y:u.y, z:topVal+1+heur(u)});
+				}
+				if(graph[u.x+1][u.y+1] == -2)
+					set_g(u, -2);
+				
+				
+				
+				if(u.x==to.x && u.y==to.y && uval < mindist){
+					mindist = Math.min(topVal+1, mindist);
+					set_g(u, mindist);
+					uval = g(u);
+					found = true;
+					last = u;
+					console.log("!");
+				}
+			} // neighbours
+			
+		}
+		if(found){
+			var _path = resolvePatch();
+			for(var n of _path)
+				grid.cells[n.y][n.x].add( [-6,0],'"." font Consolas 20 center white', {}, true);
+		}
+		return {bool: found, path: _path };
+	};
+
+	onClick = function(){};
+
+	function spawn(count){
+		var spawned = 0;
+		while(spawned < count && ballCount < res*res){
+			var x,y;
+			x = iio.randomInt(0, grid.C);
+			y = iio.randomInt(0, grid.R);
+			
+			if(grid.cells[y][x].Ball == 0){
+				var number = iio.randomInt(1, ballLevel);
+				spawned++;
+				ballCount++;
+				graph[x+1][y+1] = -2;
+				grid.cells[y][x].Ball = number;
+				grid.cells[y][x].add( [0,6],'"'+number+'" font Consolas 20 center white', {}, true);
+			}
+		}
+		app.draw();
+	};
+	spawn(15);
+	
+	
+	app.draw();
+
+	app.canvas.oncontextmenu=function(){ return false };
+
+	var selectedCell = 'undefined';
+	grid.click = function(event,ePos,cell){
+		if(event.button==0) {
+			if(selectedCell != 'undefined' && cell != selectedCell && cell.Ball == 0){
+				cell.Ball = selectedCell.Ball;
+				cell.add( [0,6],'"'+cell.Ball+'" font Consolas 20 center white', {}, true);
+				if(AStar({x:selectedCell.c, y:selectedCell.r, z:0}, {x:cell.c, y:cell.r, z:0}).bool){
+					selectedCell.rmv(0);
+					selectedCell.Ball = 0;
+					graph[selectedCell.c+1][selectedCell.r+1] = 0;
+					graph[cell.c+1][cell.r+1] = -2;
+					selectedCell = 'undefined';
+					app.draw();
+					spawn(3);
+				}
+			}
+			else if(cell.Ball != 0){
+				selectedCell = cell;
+			}
+		} 
+
 	}
-	scrapImage.src = imgPath+'enemyScrap.png';
-	
-	
-		
-	
-}
 
-
+}; 
