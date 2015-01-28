@@ -3,13 +3,13 @@
 	//set colors with random values
 	// var color = iio.randomColor();
 	var color = 'gray';
-	var colors = ["red","green", "blue", "yellow", "gray", "black", "aqua", "fuchsia", "lime", "navy" ];
+	var colors = ["red","green", "blue", "yellow", "gray", "aqua", "fuchsia", "lime", "navy" ];
 	var inverted = iio.invertColor(color);
 	app.set(inverted);
 
 	//decide max number of rows/columns
 	var res = 15;
-	var ballLevel = 9;
+	var ballLevel = 10;
 	var ballCount = 0;
 	var points = 0;
 	
@@ -194,7 +194,7 @@
 				ballCount++;
 				graph[y+1][x+1] = -2;
 				grid.cells[y][x].Ball = number;
-				grid.cells[y][x].add( [0,6],'"'+number+'" font Consolas 25 center '+colors[number], {}, true);
+				grid.cells[y][x].add( [0,6],'"'+number+'" font Consolas 25 center '+colors[number-1], {}, true);
 			}
 		}
 		app.draw();
@@ -211,27 +211,33 @@
 		var inclinedCount1 = 0;
 		var inclinedCount2 = 0;
 		
-		for(var i=1; i<res; i++){
-			if(x+i<res && grid.cells[x+i][y].Ball == value)
-				horizontalCount++;
-			if(x-i>=0 && grid.cells[x-i][y].Ball == value)
-				horizontalCount++;
-			
-			if(y+i<res && grid.cells[x][y+i].Ball == value)
-				verticalCount++;
-			if(y-i>=0 && grid.cells[x][y-i].Ball == value)
-				verticalCount++;
-			
-			if(y+i<res && x-i>=0 && grid.cells[x-i][y+i].Ball == value)
-				inclinedCount1++;
-			if(y-i>=0 && x+i<res && grid.cells[x+i][y-i].Ball == value)
-				inclinedCount1++;
-			
-			if(y+i<res && x+i<res && grid.cells[x+i][y+i].Ball == value)
-				inclinedCount2++;
-			if(y-i>=0 && x-i>=0 && grid.cells[x-i][y-i].Ball == value)
-				inclinedCount2++;
+		var testInDirection = function(x,y, d_x, d_y){
+			var count = 0;
+			for(var i=0; i<res; i++){
+				if(x>=0 && x<res && y>=0 && y<res && grid.cells[x+i*d_x][y+i*d_y].Ball == value)
+				count++;
+			}
+			return count;
 		}
+		var deleteInDirection = function(x,y, d_x, d_y){
+			var count = 0;
+			for(var i=0; i<res; i++){
+				if(x>=0 && x<res && y>=0 && y<res && grid.cells[x+i*d_x][y+i*d_y].Ball == value)
+					grid.cells[x][y+i].Ball = 0;
+					grid.cells[x][y+i].rmv(0);
+					graph[x+1][y+1+i] = 1;
+			}
+			return count;
+		}
+		horizontalCount += testInDirection(x,y, 1,0);
+		horizontalCount += testInDirection(x,y, -1,0);
+		verticalCount += testInDirection(x,y, 0,1);
+		verticalCount += testInDirection(x,y, 0,-1);
+		inclinedCount1 += testInDirection(x,y, 1,1);
+		inclinedCount1 += testInDirection(x,y, -1,-1);
+		inclinedCount2 += testInDirection(x,y, 1,-1);
+		inclinedCount2 += testInDirection(x,y, -1,1);
+
 		if(horizontalCount >= 4)
 			points += horizontalCount;
 		if(verticalCount >= 4)
@@ -248,12 +254,12 @@
 				if(x+i<res && grid.cells[x+i][y].Ball == value){
 					grid.cells[x+i][y].Ball = 0;
 					grid.cells[x+i][y].rmv(0);
-					graph[x+1+i][y+1] = 0;
+					graph[x+1+i][y+1] = 1;
 				}
 				if(x-i>=0 && grid.cells[x-i][y].Ball == value){
 					grid.cells[x-i][y].Ball = 0;
 					grid.cells[x-i][y].rmv(0);
-					graph[x+1-i][y+1] = 0;
+					graph[x+1-i][y+1] = 1;
 				}
 			}
 		}
@@ -262,12 +268,12 @@
 				if(y+i<res && grid.cells[x][y+i].Ball == value){
 					grid.cells[x][y+i].Ball = 0;
 					grid.cells[x][y+i].rmv(0);
-					graph[x+1][y+1+i] = 0;
+					graph[x+1][y+1+i] = 1;
 				}
 				if(y-i>=0 && grid.cells[x][y-i].Ball == value){
 					grid.cells[x][y-i].Ball = 0;
 					grid.cells[x][y-i].rmv(0);
-					graph[x+1][y+1-i] = 0;
+					graph[x+1][y+1-i] = 1;
 				}
 			}
 		}
@@ -276,12 +282,12 @@
 				if(y+i<res && x-i>=0 && grid.cells[x-i][y+i].Ball == value){
 					grid.cells[x-i][y+i].Ball = 0;
 					grid.cells[x-i][y+i].rmv(0);
-					graph[x+1-i][y+1+i] = 0;
+					graph[x+1-i][y+1+i] = 1;
 				}
 				if(y-i>=0 && x+i<res && grid.cells[x+i][y-i].Ball == value){
 					grid.cells[x+i][y-i].Ball = 0;
 					grid.cells[x+i][y-i].rmv(0);
-					graph[x+1+i][y+1-i] = 0;
+					graph[x+1+i][y+1-i] = 1;
 				}
 			}
 		}
@@ -290,12 +296,12 @@
 				if(y+i<res && x+i<res && grid.cells[x+i][y+i].Ball == value){
 					grid.cells[x+i][y+i].Ball = 0;
 					grid.cells[x+i][y+i].rmv(0);
-					graph[x+1+i][y+1+i] = 0;
+					graph[x+1+i][y+1+i] = 1;
 				}
 				if(y-i>=0 && x-i>=0 && grid.cells[x-i][y-i].Ball == value){
 					grid.cells[x-i][y-i].Ball = 0;
 					grid.cells[x-i][y-i].rmv(0);
-					graph[x+1-i][y+1-i] = 0;
+					graph[x+1-i][y+1-i] = 1;
 				}
 			}
 		}
@@ -308,29 +314,46 @@
 	app.draw();
 
 	app.canvas.oncontextmenu=function(){ return false };
-
+	
+	function testCoherence(){
+		for (var i = 1; i < res+1; i++)
+		for (var j = 1; j < res+1; j++){
+			if(grid.cells[i-1][j-1].Ball==0 && graph[i][j]==-2)
+				alert(i+" :  "+j);
+			if(grid.cells[i-1][j-1].Ball!=0 && graph[i][j]!=-2)
+				alert(i+" "+j);
+			if(grid.cells[i-1][j-1].Ball!=0 && grid.cells[i-1][j-1].objs.length==0)
+				alert(i+" "+j);
+			
+		}
+		
+	};
+	
 	var selectedCell = 'undefined';
 	grid.click = function(event,ePos,cell){
 		if(event.button==0) {
 			if(selectedCell != 'undefined' && cell != selectedCell && cell.Ball == 0){
-				cell.Ball = selectedCell.Ball;
-				cell.add( [0,6],'"'+cell.Ball+'" font Consolas 25 center '+colors[cell.Ball], {}, true);
-				if(AStar({x:selectedCell.c, y:selectedCell.r, z:0}, {x:cell.c, y:cell.r, z:0}).bool){
+				var response = AStar({x:selectedCell.c, y:selectedCell.r, z:0}, {x:cell.c, y:cell.r, z:0});
+				if(response.bool){
+					cell.Ball = selectedCell.Ball;
+					cell.add( [0,6],'"'+cell.Ball+'" font Consolas 25 center '+colors[cell.Ball-1  ], {}, true);
 					selectedCell.rmv(0);
 					selectedCell.Ball = 0;
-					graph[selectedCell.c+1][selectedCell.r+1] = 0;
+					graph[selectedCell.c+1][selectedCell.r+1] = 1;
 					graph[cell.c+1][cell.r+1] = -2;
 					selectedCell = 'undefined';
 					testBalls(cell);
 					app.draw();
 					spawn(3);
 				}
+				else
+					alert("No way!");
 			}
 			else if(cell.Ball != 0){
+				selectedCell = 'undefined';
 				selectedCell = cell;
 			}
 		} 
-
 	}
 
 }; 
