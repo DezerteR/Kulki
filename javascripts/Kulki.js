@@ -2,9 +2,11 @@
 
 	//set colors with random values
 	// var color = iio.randomColor();
-	var color = 'gray';
-	var colors = ["red","green", "blue", "yellow", "gray", "aqua", "fuchsia", "lime", "navy" ];
-	var inverted = iio.invertColor(color);
+	var color = '#F7B051';
+
+	var colors = ["#F38895", "#FBF528","#55AA2D", "#439AF1", "#F38895", "#DA3232", "#222E7B", "#294628", "#4F657B", "#976D35" ];
+	// var inverted = iio.invertColor(color);
+	var inverted = "#292F3A";
 	app.set(inverted);
 
 	//decide max number of rows/columns
@@ -12,6 +14,8 @@
 	var ballLevel = 10;
 	var ballCount = 0;
 	var points = 0;
+	var scoreboard = app.add([50,50], "'SCORE: 0' #FBF528 font Impact 40 left");
+		// "'score: 0' #FBF528 font Impact 40 left", { fade: 0.02}, undefined, true);
 	
 	//create the grid
 	var grid = app.add(app.center,
@@ -21,7 +25,6 @@
 		for(var y=0; y<grid.R; y++)
 			grid.cells[y][x].Ball = 0;
 		
-	
 	
 	var neighbours = new Array(4);
 	neighbours[0] = {x:1,y:0};
@@ -77,7 +80,14 @@
 		queue.queue(from);
 		
 		var g = function(cell){
-			return visited[cell.x+1][cell.y+1];
+			try {
+				return visited[cell.x+1][cell.y+1];
+			}
+			catch(error){
+				console.log(error);
+				console.log((cell.x+1)+" "+(cell.y+1));
+				return -2;
+			}
 		};
 		var set_g = function(cell, x){
 			visited[cell.x+1][cell.y+1] = x;
@@ -171,11 +181,17 @@
 		app.draw();
 		
 		var _path = resolvePatch();
-		// if(found){
-			// for(var n of _path)
-				// grid.cells[n.x][n.y].add( [0,0],'"." font Consolas 20 center red', {}, true);
+		if(_path){
+			var color = grid.cells[from.x][from.y].Ball;
+			// var shrinking = _path.length/100.0;
+			var shrinking = 0;
+			for(var i=0; i<_path.length-1; i++){
+				var n = _path[i]
+				grid.cells[n.x][n.y].add('height/1.2: simple '+ colors[color], { shrink: 0.02+shrinking }, undefined, true);
+				shrinking += 0.01;
+			}
 			
-		// }
+		}
 		return {bool: found, path: _path };
 	};
 
@@ -194,40 +210,59 @@
 				ballCount++;
 				graph[y+1][x+1] = -2;
 				grid.cells[y][x].Ball = number;
-				grid.cells[y][x].add( [0,6],'"'+number+'" font Consolas 25 center '+colors[number-1], {}, true);
+				// grid.cells[y][x].add( [0,6],'"'+number+'" font Consolas 25 center '+colors[number-1], {}, true);
+				grid.cells[y][x].add('height/1.2: simple '+ colors[number], {}, undefined, true);
 			}
 		}
 		app.draw();
 	};
 	spawn(7);
 	
+	
+	function updateScoreboard(score){
+		points += score;
+		scoreboard.text = "SCORE: "+points;
+		app.add([250,75], "'+"+score+"' #C12424 font Impact 60 left", { fade: 0.02}, undefined, true);
+		app.draw();
+		
+	}
 	function testBalls(cell){
 		var value = cell.Ball;
 		var x = cell.c;
 		var y = cell.r;
 		
-		var horizontalCount = 0;
-		var verticalCount = 0;
-		var inclinedCount1 = 0;
-		var inclinedCount2 = 0;
+		var horizontalCount = 1;
+		var verticalCount = 1;
+		var inclinedCount1 = 1;
+		var inclinedCount2 = 1;
 		
 		var testInDirection = function(x,y, d_x, d_y){
 			var count = 0;
-			for(var i=0; i<res; i++){
-				if(x>=0 && x<res && y>=0 && y<res && grid.cells[x+i*d_x][y+i*d_y].Ball == value)
-				count++;
+			for(var i=1; i<res; i++){
+				if(x+i*d_x>=0 && x+i*d_x<res && y+i*d_y>=0 && y+i*d_y<res && grid.cells[x+i*d_x][y+i*d_y].Ball == value)
+					count++;
+				else
+					break;
 			}
 			return count;
 		}
 		var deleteInDirection = function(x,y, d_x, d_y){
-			var count = 0;
-			for(var i=0; i<res; i++){
-				if(x>=0 && x<res && y>=0 && y<res && grid.cells[x+i*d_x][y+i*d_y].Ball == value)
-					grid.cells[x][y+i].Ball = 0;
-					grid.cells[x][y+i].rmv(0);
-					graph[x+1][y+1+i] = 1;
+			for(var i=1; i<res; i++){
+				if(x+i*d_x>=0 && x+i*d_x<res && y+i*d_y>=0 && y+i*d_y<res && grid.cells[x+i*d_x][y+i*d_y].Ball == value){
+					grid.cells[x+i*d_x][y+i*d_y].Ball = 0;
+					grid.cells[x+i*d_x][y+i*d_y].rmv(2);
+					grid.cells[x+i*d_x][y+i*d_y].rmv(1);
+					grid.cells[x+i*d_x][y+i*d_y].rmv(0);
+					graph[x+i*d_x][y+i*d_y] = 1;
+				}
+				else
+					break;
 			}
-			return count;
+			grid.cells[x][y].Ball = 0;
+			grid.cells[x][y].rmv(2);
+			grid.cells[x][y].rmv(1);
+			grid.cells[x][y].rmv(0);
+			graph[x][y] = 1;
 		}
 		horizontalCount += testInDirection(x,y, 1,0);
 		horizontalCount += testInDirection(x,y, -1,0);
@@ -237,84 +272,41 @@
 		inclinedCount1 += testInDirection(x,y, -1,-1);
 		inclinedCount2 += testInDirection(x,y, 1,-1);
 		inclinedCount2 += testInDirection(x,y, -1,1);
+		
+		var score = 0;
+		if(horizontalCount >= 5){
+			score += horizontalCount;
+			deleteInDirection(x,y, 1,0);
+			deleteInDirection(x,y, -1,0);
+			updateScoreboard(score);
+			app.draw();
+		}
+		if(verticalCount >= 5){
+			score += verticalCount;
+			deleteInDirection(x,y, 0,1);
+			deleteInDirection(x,y, 0,-1);
+			updateScoreboard(score);
+			app.draw();
+		}
+		if(inclinedCount1 >= 5){
+			score += inclinedCount1;
+			deleteInDirection(x,y, 1,1);
+			deleteInDirection(x,y, -1,-1);
+			updateScoreboard(score);
+			app.draw();
+		}
+		if(inclinedCount2 >= 5){
+			score += inclinedCount2;
+			deleteInDirection(x,y, 1,-1);
+			deleteInDirection(x,y, -1,1);
+			updateScoreboard(score);
+			app.draw();
+		}
 
-		if(horizontalCount >= 4)
-			points += horizontalCount;
-		if(verticalCount >= 4)
-			points += verticalCount;
-		if(inclinedCount1 >= 4)
-			points += inclinedCount1;
-		if(inclinedCount2 >= 4)
-			points += inclinedCount2;
-
-		console.log(points);
-			
-		if(horizontalCount >= 4){
-			for(var i=0; i<res; i++){
-				if(x+i<res && grid.cells[x+i][y].Ball == value){
-					grid.cells[x+i][y].Ball = 0;
-					grid.cells[x+i][y].rmv(0);
-					graph[x+1+i][y+1] = 1;
-				}
-				if(x-i>=0 && grid.cells[x-i][y].Ball == value){
-					grid.cells[x-i][y].Ball = 0;
-					grid.cells[x-i][y].rmv(0);
-					graph[x+1-i][y+1] = 1;
-				}
-			}
-		}
-		if(verticalCount >= 4){
-			for(var i=0; i<res; i++){
-				if(y+i<res && grid.cells[x][y+i].Ball == value){
-					grid.cells[x][y+i].Ball = 0;
-					grid.cells[x][y+i].rmv(0);
-					graph[x+1][y+1+i] = 1;
-				}
-				if(y-i>=0 && grid.cells[x][y-i].Ball == value){
-					grid.cells[x][y-i].Ball = 0;
-					grid.cells[x][y-i].rmv(0);
-					graph[x+1][y+1-i] = 1;
-				}
-			}
-		}
-		if(inclinedCount1 >= 4){
-			for(var i=0; i<res; i++){
-				if(y+i<res && x-i>=0 && grid.cells[x-i][y+i].Ball == value){
-					grid.cells[x-i][y+i].Ball = 0;
-					grid.cells[x-i][y+i].rmv(0);
-					graph[x+1-i][y+1+i] = 1;
-				}
-				if(y-i>=0 && x+i<res && grid.cells[x+i][y-i].Ball == value){
-					grid.cells[x+i][y-i].Ball = 0;
-					grid.cells[x+i][y-i].rmv(0);
-					graph[x+1+i][y+1-i] = 1;
-				}
-			}
-		}
-		if(inclinedCount2 >= 4){
-			for(var i=0; i<res; i++){
-				if(y+i<res && x+i<res && grid.cells[x+i][y+i].Ball == value){
-					grid.cells[x+i][y+i].Ball = 0;
-					grid.cells[x+i][y+i].rmv(0);
-					graph[x+1+i][y+1+i] = 1;
-				}
-				if(y-i>=0 && x-i>=0 && grid.cells[x-i][y-i].Ball == value){
-					grid.cells[x-i][y-i].Ball = 0;
-					grid.cells[x-i][y-i].rmv(0);
-					graph[x+1-i][y+1-i] = 1;
-				}
-			}
-		}
-		
-		
-		
-		
-		
 	}
-	app.draw();
 
 	app.canvas.oncontextmenu=function(){ return false };
-	
+
 	function testCoherence(){
 		for (var i = 1; i < res+1; i++)
 		for (var j = 1; j < res+1; j++){
@@ -334,9 +326,12 @@
 		if(event.button==0) {
 			if(selectedCell != 'undefined' && cell != selectedCell && cell.Ball == 0){
 				var response = AStar({x:selectedCell.c, y:selectedCell.r, z:0}, {x:cell.c, y:cell.r, z:0});
-				if(response.bool){
+				if(response.bool == true){
 					cell.Ball = selectedCell.Ball;
-					cell.add( [0,6],'"'+cell.Ball+'" font Consolas 25 center '+colors[cell.Ball-1  ], {}, true);
+					// cell.add( [0,6],'"'+cell.Ball+'" font Consolas 25 center '+colors[cell.Ball-1  ], {}, true);
+					cell.add('height/1.2: simple '+ colors[cell.Ball], {}, undefined, true);
+					// selectedCell.rmv(2);
+					selectedCell.rmv(1);
 					selectedCell.rmv(0);
 					selectedCell.Ball = 0;
 					graph[selectedCell.c+1][selectedCell.r+1] = 1;
@@ -350,8 +345,13 @@
 					alert("No way!");
 			}
 			else if(cell.Ball != 0){
+				if(selectedCell != 'undefined')
+					selectedCell.add('height/1.2: simple '+ colors[selectedCell.Ball], {}, undefined, true);
 				selectedCell = 'undefined';
 				selectedCell = cell;
+				selectedCell.rmv(1);
+				selectedCell.rmv(0);
+				selectedCell.add('height/1.5: simple '+ colors[selectedCell.Ball], {}, undefined, true);
 			}
 		} 
 	}
